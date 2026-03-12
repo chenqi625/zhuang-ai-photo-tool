@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>壮AI 独立修图工具（预览版）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <!-- iOS Safari / 添加到主屏幕 支持 -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="壮AI 修图" />
+  <style>
+    :root {
+      --bg: #18181b;
+      --bg-elevated: #27272f;
+      --border: #3f3f46;
+      --accent: #4ade80;
+      --accent-soft: rgba(74, 222, 128, 0.15);
+      --accent-text: #16a34a;
+      --danger: #f97373;
+      --text: #e5e7eb;
+      --text-muted: #9ca3af;
+      --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 16px;
+      background: radial-gradient(circle at top, #1e293b 0, #020617 55%, #000 100%);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+      position: relative;
+      overflow: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: url("./assets/footer-hero.png");
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      opacity: 0.32;
+      mix-blend-mode: screen;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .shell {
+      width: 100%;
+      max-width: 1120px;
+      background: rgba(15, 23, 42, 0.92);
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      box-shadow:
+        0 22px 45px rgba(15, 23, 42, 0.85),
+        0 0 0 1px rgba(148, 163, 184, 0.25);
+      padding: 16px 18px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      backdrop-filter: blur(18px);
+      position: relative;
+      z-index: 1;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .title {
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      color: var(--text-muted);
+      background: rgba(15, 23, 42, 0.9);
+    }
+
+    .sub {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .pill {
+      font-size: 10px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(52, 211, 153, 0.7);
+      color: #6ee7b7;
+      background: rgba(22, 163, 74, 0.1);
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr);
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    @media (max-width: 900px) {
+      .shell {
+        padding: 12px;
+      }
+      .main {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .panel {
+      background: radial-gradient(circle at top left, #1f2937 0, #020617 65%);
+      border-radius: 10px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      padding: 12px 12px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: -40%;
+      background:
+        radial-gradient(circle at 0 0, rgba(59, 130, 246, 0.13), transparent 55%),
+        radial-gradient(circle at 100% 0, rgba(52, 211, 153, 0.13), transparent 60%);
+      opacity: 0.7;
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+
+    .panel-inner {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .panel-title {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #9ca3af;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .field {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    label {
+      font-size: 11px;
+      color: #d1d5db;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .hint {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    input[type="text"],
+    input[type="password"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.9);
+      border-radius: 6px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      padding: 6px 8px;
+      font-size: 12px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, transform 0.06s ease;
+      font-family: var(--font);
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: rgba(52, 211, 153, 0.9);
+      box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.6), 0 0 0 8px rgba(16, 185, 129, 0.1);
+      background: #020617;
+      transform: translateY(-0.5px);
+    }
+
+    textarea {
+      min-height: 90px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .input-with-icon {
+      position: relative;
+      display: flex;
+      align-items: stretch;
+    }
+
+    .input-with-icon input {
+      padding-right: 26px;
+    }
+
+    .icon-button {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      border: none;
+      background: transparent;
+      padding: 0;
+      margin: 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      opacity: 0.75;
+    }
+
+    .icon-button:hover {
+      opacity: 1;
+      color: var(--accent);
+    }
+
+    .icon-button svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .workflow-buttons {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    @media (max-width: 700px) {
+      .workflow-buttons {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    .btn {
+      border-radius: 7px;
+      border: 1px solid rgba(75, 85, 99, 0.9);
+      background: radial-gradient(circle at top left, #1f2937 0, #020617 70%);
+      color: #e5e7eb;
+      font-size: 11px;
+      padding: 7px 10px;
+      cursor: pointer;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      transition: border-color 0.16s ease, background 0.16s ease, transform 0.08s ease, box-shadow 0.16s ease;
+    }
+
+    .btn:hover {
+      border-color: rgba(148, 163, 184, 0.9);
+      background: radial-gradient(circle at top left, #1f2937 0, #020617 78%);
+      transform: translateY(-0.5px);
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.85);
+    }
+
+    .btn:active {
+      transform: translateY(0.5px) scale(0.99);
+      box-shadow: none;
+    }
+
+    .btn-primary {
+      border-color: rgba(52, 211, 153, 0.9);
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: #022c22;
+      font-weight: 600;
+      box-shadow:
+        0 10px 22px rgba(34, 197, 94, 0.32),
+        0 0 0 1px rgba(21, 128, 61, 0.6);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #4ade80, #22c55e);
+      box-shadow:
+        0 14px 26px rgba(34, 197, 94, 0.45),
+        0 0 0 1px rgba(21, 128, 61, 0.8);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .btn-ghost {
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.6), rgba(15, 23, 42, 0.2));
+      border-style: solid;
+      border-color: rgba(148, 163, 184, 0.45);
+      color: #e5e7eb;
+      box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.9);
+    }
+
+    .btn-ghost:hover {
+      border-color: rgba(191, 219, 254, 0.8);
+      background: radial-gradient(circle at top left, rgba(30, 64, 175, 0.4), rgba(15, 23, 42, 0.3));
+      color: #f9fafb;
+      box-shadow:
+        0 4px 14px rgba(15, 23, 42, 0.85),
+        inset 0 0 0 1px rgba(15, 23, 42, 0.9);
+    }
+
+    .btn-pink {
+      background: linear-gradient(135deg, #fb7185, #ec4899);
+      border-color: rgba(244, 114, 182, 0.95);
+      color: #fdf2f8;
+    }
+
+    .btn-pink:hover {
+      background: linear-gradient(135deg, #f9a8d4, #f472b6);
+    }
+
+    .btn-outline {
+      border-color: rgba(59, 130, 246, 0.75);
+      color: #bfdbfe;
+      background: radial-gradient(circle at top, rgba(37, 99, 235, 0.32), rgba(15, 23, 42, 0.95));
+    }
+
+    .btn-sm {
+      padding: 4px 8px;
+      font-size: 10px;
+    }
+
+    .btn-full {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .upload-zone {
+      border-radius: 8px;
+      border: 1px solid rgba(75, 85, 99, 0.95);
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: radial-gradient(circle at top left, rgba(55, 65, 81, 0.45), rgba(15, 23, 42, 0.96));
+    }
+    .upload-zone.dragover {
+      border-color: rgba(52, 211, 153, 0.95);
+      box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.5);
+    }
+
+    .upload-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .upload-info {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    input[type="file"] {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .previews {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      height: 260px;
+    }
+
+    @media (max-width: 900px) {
+      .previews {
+        height: 220px;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .previews {
+        grid-template-columns: minmax(0, 1fr);
+        height: 380px;
+      }
+    }
+
+    .preview-card {
+      border-radius: 8px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      background: radial-gradient(circle at top, #111827 0, #020617 70%);
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-height: 0;
+    }
+
+    .preview-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .preview-body {
+      flex: 1;
+      border-radius: 6px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      background: radial-gradient(circle at center, #020617 0, #000 70%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .preview-body.empty span {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .preview-body img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .preview-tag {
+      position: absolute;
+      bottom: 6px;
+      right: 6px;
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(75, 85, 99, 0.9);
+      color: var(--text-muted);
+    }
+
+    .preview-tag.success {
+      border-color: rgba(34, 197, 94, 0.9);
+      color: #bbf7d0;
+    }
+
+    .log {
+      border-radius: 8px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      background: radial-gradient(circle at top, #020617 0, #020617 65%);
+      padding: 6px 7px;
+      max-height: 120px;
+      min-height: 70px;
+      overflow: auto;
+      font-family: ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 11px;
+      line-height: 1.45;
+      color: #e5e7eb;
+    }
+
+    .log-line {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .log-time {
+      color: #6b7280;
+      margin-right: 4px;
+    }
+
+    .log-info {
+      color: #e5e7eb;
+    }
+
+    .log-success {
+      color: #bbf7d0;
+    }
+
+    .log-warn {
+      color: #fde68a;
+    }
+
+    .log-error {
+      color: #fecaca;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      color: var(--text-muted);
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .link {
+      color: #93c5fd;
+      text-decoration: none;
+    }
+
+    .link:hover {
+      text-decoration: underline;
+      color: #bfdbfe;
+    }
+
+    .pill-mini {
+      border-radius: 999px;
+      padding: 1px 6px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      background: rgba(15, 23, 42, 0.85);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: #4ade80;
+      box-shadow: 0 0 8px rgba(74, 222, 128, 0.9);
+      margin-right: 4px;
+    }
+
+    .ad-bar {
+      margin-top: 10px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: radial-gradient(circle at top, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.9));
+      box-shadow:
+        0 10px 26px rgba(15, 23, 42, 0.85),
+        0 0 0 1px rgba(15, 23, 42, 0.9);
+    }
+
+    .ad-bar-inner {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+    }
+
+    .ad-banner {
+      flex: 1.4;
+      min-width: 0;
+      position: relative;
+    }
+
+    .ad-banner img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .ad-meta {
+      flex: 1;
+      min-width: 0;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 6px;
+      border-left: 1px solid rgba(31, 41, 55, 0.95);
+    }
+
+    .ad-meta-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ad-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      color: #e5e7eb;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(22, 163, 74, 0.16);
+      border: 1px solid rgba(34, 197, 94, 0.7);
+    }
+
+    .ad-tag-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: #4ade80;
+      box-shadow: 0 0 10px rgba(74, 222, 128, 0.9);
+    }
+
+    .ad-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #f9fafb;
+    }
+
+    .ad-desc {
+      font-size: 11px;
+      color: #d1d5db;
+      line-height: 1.5;
+    }
+
+    .ad-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+      font-size: 10px;
+    }
+
+    .ad-links span {
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      color: #e5e7eb;
+    }
+
+    .ad-close-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      background: rgba(15, 23, 42, 0.9);
+      color: #e5e7eb;
+      width: 40px;
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 0;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.9);
+      transition: background 0.12s ease, transform 0.12s ease, opacity 0.12s ease;
+    }
+
+    .ad-close-btn:hover {
+      background: rgba(30, 64, 175, 0.95);
+      transform: translateY(-1px);
+      opacity: 0.96;
+    }
+
+    .ad-bar-text-only .ad-banner {
+      display: none;
+    }
+
+    .ad-bar-text-only .ad-meta {
+      border-left: none;
+      flex: 1.4;
+    }
+
+    @media (max-width: 720px) {
+      .ad-bar-inner {
+        flex-direction: column;
+      }
+
+      .ad-meta {
+        border-left: none;
+        border-top: 1px solid rgba(31, 41, 55, 0.95);
+      }
+
+      .ad-bar-text-only .ad-meta {
+        border-top: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="header">
+      <div class="title-group">
+        <div class="title">
+          壮AI 修图工具
+          <span class="badge">Preview / 无需 Photoshop</span>
+        </div>
+        <div class="sub">
+          使用教程：填写 API Key，上传一张图片，选择工作流或输入提示词，点击生成图片，等待生成。
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <!-- 左侧：配置与上传 -->
+      <section class="panel">
+        <div class="panel-inner">
+          <div class="panel-title">
+            基础配置
+            <span style="font-size:10px; color:var(--text-muted);">
+              <span class="status-dot"></span>直连现有 AI 服务
+            </span>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label>
+                API Key
+              </label>
+              <div class="input-with-icon">
+                <input id="apiKeyInput" type="password" autocomplete="off" placeholder="sk-..." />
+                <button class="icon-button" id="toggleApiKeyBtn" type="button" aria-label="显示/隐藏 API Key">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1.5 12s3.75-7.5 10.5-7.5S22.5 12 22.5 12 18.75 19.5 12 19.5 1.5 12 1.5 12Z" />
+                    <circle cx="12" cy="12" r="3.25" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label>模型</label>
+              <select id="modelSelect">
+                <option value="AJbanana3" selected>zhuangpro~（支持 1K/2K/4K）</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>出图尺寸</label>
+              <select id="sizeSelect">
+                <option value="Auto">Auto</option>
+                <option value="1K">1K</option>
+                <option value="2K" selected>2K</option>
+                <option value="4K">4K</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>
+                超时（秒）
+              </label>
+              <input id="timeoutInput" type="number" min="5" max="600" value="200" />
+            </div>
+          </div>
+
+          <div class="panel-title" style="margin-top:2px;">
+            一键工作流
+          </div>
+
+          <div class="workflow-buttons">
+            <button class="btn btn-sm" data-workflow-id="autoLight" type="button">自动补光</button>
+            <button class="btn btn-sm" data-workflow-id="innerGlossy" type="button">打底变胶</button>
+            <button class="btn btn-sm" data-workflow-id="innerBlackGlossy" type="button">打底黑胶</button>
+            <button class="btn btn-sm" data-workflow-id="wigCleanup" type="button">造型修复去杂毛</button>
+            <button class="btn btn-sm" data-workflow-id="productShot" type="button">一键白棚（人物产品通用）</button>
+            <button class="btn btn-sm" data-workflow-id="sceneRetouch" type="button">一键修场照</button>
+          </div>
+
+          <div class="field">
+            <label>
+              提示词（Prompt）
+            </label>
+            <textarea id="promptInput" placeholder="在此输入或编辑提示词..."></textarea>
+          </div>
+
+          <div class="panel-title" style="margin-top:2px;">
+            输入图片
+          </div>
+
+          <div class="upload-zone" id="uploadZone">
+            <div class="upload-row">
+              <div class="upload-info">
+                选择一张 PNG / JPG / JPEG 图片（推荐人像或产品图）。
+              </div>
+              <button id="clearInputImageBtn" class="btn btn-ghost btn-sm" type="button">
+                清空
+              </button>
+            </div>
+            <input id="inputImageFile" type="file" accept="image/png,image/jpeg,image/jpg" />
+          </div>
+
+          <div class="row" style="margin-top:2px;">
+            <button id="generateBtn" class="btn btn-primary btn-full" type="button">
+              生成图片
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 右侧：预览与日志 -->
+      <section class="panel">
+        <div class="panel-inner">
+          <div class="panel-title">
+            预览与结果
+          </div>
+
+          <div class="previews">
+            <div class="preview-card">
+              <div class="preview-label">
+                原图
+                <span class="hint">上传后预览</span>
+              </div>
+              <div class="preview-body empty" id="inputPreviewBox">
+                <span>尚未选择图片</span>
+                <img id="inputPreviewImg" alt="输入预览" style="display:none;" />
+                <div class="preview-tag" id="inputPreviewTag" style="display:none;">已加载</div>
+              </div>
+            </div>
+
+            <div class="preview-card">
+              <div class="preview-label">
+                生成结果
+                <button id="downloadBtn" class="btn btn-outline btn-sm" type="button" disabled>
+                  下载 PNG
+                </button>
+              </div>
+              <div class="preview-body empty" id="outputPreviewBox">
+                <span>等待生成...</span>
+                <a id="outputDownloadAnchor" href="#" draggable="true" style="display:none; text-decoration:none;">
+                  <img id="outputPreviewImg" alt="输出预览" style="display:none;" />
+                </a>
+                <div class="preview-tag" id="outputPreviewTag" style="display:none;">已生成</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel-title" style="margin-top:4px;">
+            日志
+            <span class="hint">请求过程与错误信息会显示在此处</span>
+          </div>
+          <div id="logWindow" class="log">
+            <div class="log-line">
+              <span class="log-time">[启动]</span>
+              <span class="log-info">独立 Web 工具已就绪。请输入 API Key、选择图片后点击「生成」。</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div></div>
+      <div>
+        <span class="hint">使用已配置的 AI 服务 · 请确保账号额度充足。</span>
+      </div>
+    </footer>
+
+    <section class="ad-bar" id="adBar" aria-label="壮壮人业务广告位">
+      <div class="ad-bar-inner">
+        <div class="ad-banner">
+          <button type="button" class="ad-close-btn" id="adCloseBtn" aria-label="关闭图片广告">×</button>
+          <img src="./assets/ad-banner-1.png" alt="拍照我只找壮壮人 场照正片广告" />
+        </div>
+        <div class="ad-meta">
+          <div class="ad-meta-header">
+            <div class="ad-tag">
+              <span class="ad-tag-dot"></span>
+              <span>壮壮人</span>
+            </div>
+          <div class="ad-title">拍照我只找壮壮人 · 场照正片与教学</div>
+          <div class="ad-desc">
+            常驻武汉，可约场照正片拍摄，也提供场照与正片修图教学私教服务。
+          </div>
+          <div class="ad-links">
+            <span>QQ：1249066672</span>
+            <span>VX：q1249066672</span>
+            <span>插件交流群：463922715</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="./main.js"></script>
+</body>
+</html>
+
